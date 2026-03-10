@@ -19,7 +19,7 @@ from analytics.forecasting import demand_forecast
 from analytics.heatmap import zone_activity
 
 from backend.database import init_db, seed_showrooms, get_showroom_by_username, save_showroom_data, get_showroom_data
-from backend.auth import verify_password, create_access_token, get_current_showroom
+from backend.auth import hash_password, verify_password, create_access_token, get_current_showroom
 
 # ── Bootstrap DB on startup ────────────────────────────────────────────────────
 init_db()
