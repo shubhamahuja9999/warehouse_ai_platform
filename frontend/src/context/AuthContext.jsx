@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+const DEMO_SHOWROOMS = {
+  downtown: { id: 1, name: 'Downtown Showroom', username: 'downtown' },
+  north: { id: 2, name: 'North Wing', username: 'north' },
+  east: { id: 3, name: 'East Branch', username: 'east' },
+}
 
-axios.defaults.baseURL = API_URL
+const DEMO_PASSWORD = 'pass123'
 
 const AuthContext = createContext(null)
 
-// Helper: sync header immediately (not via useEffect)
 function setAuthHeader(token) {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -20,27 +23,23 @@ export function AuthProvider({ children }) {
   const [showroom, setShowroom] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Initialise token and header synchronously so /auth/me can use it immediately
   const [token, setToken] = useState(() => {
     const stored = localStorage.getItem('wh_token')
-    setAuthHeader(stored)   // set header NOW, before any effects run
+    setAuthHeader(stored)
     return stored
   })
 
-  // Keep header in sync whenever token changes after initial load
   useEffect(() => {
     setAuthHeader(token)
   }, [token])
 
-  // On app load, verify stored token
   useEffect(() => {
     const verify = async () => {
       if (!token) { setLoading(false); return }
       try {
-        const { data } = await axios.get('/auth/me')
-        setShowroom(data)
+        const showroomData = JSON.parse(localStorage.getItem('wh_showroom'))
+        if (showroomData) setShowroom(showroomData)
       } catch {
-        // Token expired or invalid → log out
         logout()
       } finally {
         setLoading(false)
@@ -50,17 +49,25 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async (username, password) => {
-    const { data } = await axios.post('/auth/login', { username, password })
-    const { access_token, showroom_name, showroom_id } = data
-    setAuthHeader(access_token)                          // set header immediately
-    localStorage.setItem('wh_token', access_token)
-    setToken(access_token)
-    setShowroom({ id: showroom_id, name: showroom_name, username })
-    return data
+    if (password !== DEMO_PASSWORD) {
+      throw new Error('Invalid credentials')
+    }
+    const showroomData = DEMO_SHOWROOMS[username.toLowerCase()]
+    if (!showroomData) {
+      throw new Error('Invalid credentials')
+    }
+    const fakeToken = btoa(JSON.stringify(showroomData))
+    setAuthHeader(fakeToken)
+    localStorage.setItem('wh_token', fakeToken)
+    localStorage.setItem('wh_showroom', JSON.stringify(showroomData))
+    setToken(fakeToken)
+    setShowroom(showroomData)
+    return { access_token: fakeToken, showroom_name: showroomData.name, showroom_id: showroomData.id }
   }
 
   const logout = () => {
     localStorage.removeItem('wh_token')
+    localStorage.removeItem('wh_showroom')
     setToken(null)
     setShowroom(null)
     setAuthHeader(null)

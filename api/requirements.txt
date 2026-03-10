@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-python-jose
-bcrypt
-python-multipart
-pandas
-numpy
-plotly
-scikit-learn
