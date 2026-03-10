@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
 
+const API_URL = import.meta.env.VITE_API_URL || ''
+
+axios.defaults.baseURL = API_URL
+
 const AuthContext = createContext(null)
 
 // Helper: sync header immediately (not via useEffect)
