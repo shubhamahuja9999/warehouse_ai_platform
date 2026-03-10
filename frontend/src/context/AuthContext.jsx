@@ -3,18 +3,29 @@ import axios from 'axios'
 
 const AuthContext = createContext(null)
 
+// Helper: sync header immediately (not via useEffect)
+function setAuthHeader(token) {
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  } else {
+    delete axios.defaults.headers.common['Authorization']
+  }
+}
+
 export function AuthProvider({ children }) {
   const [showroom, setShowroom] = useState(null)
-  const [token, setToken]       = useState(() => localStorage.getItem('wh_token'))
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  // Set axios default auth header whenever token changes
+  // Initialise token and header synchronously so /auth/me can use it immediately
+  const [token, setToken] = useState(() => {
+    const stored = localStorage.getItem('wh_token')
+    setAuthHeader(stored)   // set header NOW, before any effects run
+    return stored
+  })
+
+  // Keep header in sync whenever token changes after initial load
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    } else {
-      delete axios.defaults.headers.common['Authorization']
-    }
+    setAuthHeader(token)
   }, [token])
 
   // On app load, verify stored token
@@ -37,6 +48,7 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     const { data } = await axios.post('/auth/login', { username, password })
     const { access_token, showroom_name, showroom_id } = data
+    setAuthHeader(access_token)                          // set header immediately
     localStorage.setItem('wh_token', access_token)
     setToken(access_token)
     setShowroom({ id: showroom_id, name: showroom_name, username })
@@ -47,7 +59,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('wh_token')
     setToken(null)
     setShowroom(null)
-    delete axios.defaults.headers.common['Authorization']
+    setAuthHeader(null)
   }
 
   return (

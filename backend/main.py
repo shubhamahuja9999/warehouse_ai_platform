@@ -23,7 +23,7 @@ from backend.auth import verify_password, create_access_token, get_current_showr
 
 # ── Bootstrap DB on startup ────────────────────────────────────────────────────
 init_db()
-seed_showrooms()
+seed_showrooms(hash_password)
 
 app = FastAPI(title="Warehouse Intelligence API", version="2.0.0")
 

@@ -38,10 +38,8 @@ def init_db():
         """)
 
 
-def seed_showrooms():
+def seed_showrooms(hash_fn):
     """Insert demo showrooms if they don't exist yet."""
-    from backend.auth import hash_password
-
     demos = [
         ("Downtown Showroom", "downtown", "pass123"),
         ("North Wing",        "north",    "pass123"),
@@ -55,7 +53,7 @@ def seed_showrooms():
             if not exists:
                 conn.execute(
                     "INSERT INTO showrooms (name, username, password) VALUES (?,?,?)",
-                    (name, uname, hash_password(pwd)),
+                    (name, uname, hash_fn(pwd)),
                 )
 
 
