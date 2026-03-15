@@ -11,12 +11,12 @@ export default function FileUploader({ onFile, label, icon: Icon, accepted = tru
   return (
     <div
       {...getRootProps()}
-      className={`relative border-2 border-dashed rounded-2xl p-6 cursor-pointer transition-all duration-300 group
+      className={`relative border-2 border-dashed p-6 cursor-pointer group glass-card hover:glow
         ${isDragActive
-          ? 'border-indigo-400 bg-indigo-500/10 scale-[1.02]'
+          ? '!border-indigo-400 bg-indigo-500/10 scale-[1.02]'
           : fileName
-            ? 'border-emerald-500/50 bg-emerald-500/5'
-            : 'border-slate-600/50 bg-slate-800/30 hover:border-indigo-500/60 hover:bg-indigo-500/5'
+            ? '!border-emerald-500/50'
+            : '!border-indigo-500/30 hover:!border-indigo-400'
         }
       `}
     >

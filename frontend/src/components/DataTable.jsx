@@ -2,7 +2,7 @@ export default function DataTable({ title, data, columns, maxRows = 10 }) {
   const rows = data ? data.slice(0, maxRows) : []
 
   return (
-    <div className="glass rounded-2xl border border-indigo-500/15 shadow-xl overflow-hidden">
+    <div className="glass-card border border-indigo-500/15 shadow-xl overflow-hidden">
       {title && (
         <div className="px-6 py-4 border-b border-slate-700/50">
           <h3 className="text-base font-semibold text-slate-200">{title}</h3>

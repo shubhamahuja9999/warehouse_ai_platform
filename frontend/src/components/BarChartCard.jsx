@@ -18,7 +18,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function BarChartCard({ title, data, xKey, yKey, color = '#6366f1' }) {
   return (
-    <div className="glass rounded-2xl p-6 border border-indigo-500/15 shadow-xl">
+    <div className="glass-card p-6 border border-indigo-500/15 shadow-xl">
       <h3 className="text-base font-semibold text-slate-200 mb-5">{title}</h3>
       {data && data.length > 0 ? (
         <ResponsiveContainer width="100%" height={220}>

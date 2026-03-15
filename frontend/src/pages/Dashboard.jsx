@@ -302,9 +302,9 @@ export default function Dashboard() {
       )}
 
       {!ordersData && !inventoryData && !returnsData && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6">
-            <Package size={32} className="text-indigo-400 opacity-60" />
+        <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 glow animate-pulse-slow">
+            <Package size={32} className="text-indigo-400 opacity-80" />
           </div>
           <h2 className="text-slate-300 font-semibold text-lg">No data yet for {showroom?.name}</h2>
           <p className="text-slate-600 text-sm mt-2 max-w-xs">

@@ -9,7 +9,7 @@ export default function KPICard({ title, value, subtitle, icon: Icon, color = 'i
   const c = colors[color]
 
   return (
-    <div className={`glass rounded-2xl p-5 border ${c.border} shadow-xl ${c.glow} hover:scale-[1.02] transition-all duration-300`}>
+    <div className={`glass-card p-5 border ${c.border} shadow-xl ${c.glow}`}>
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center`}>
           <Icon size={18} className={c.text} />
