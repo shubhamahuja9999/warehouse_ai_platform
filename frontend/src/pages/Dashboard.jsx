@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Package, TrendingUp, AlertTriangle, RefreshCw,
-  BarChart2, Loader2, ChevronRight, Boxes, Clock
+  BarChart2, Loader2, ChevronRight, Boxes, Clock, Trash2
 } from 'lucide-react'
 
 import FileUploader from '../components/FileUploader'
@@ -11,17 +11,6 @@ import DataTable from '../components/DataTable'
 import { useAuth } from '../context/AuthContext'
 
 const STORAGE_KEY = 'warehouse_data'
-
-function loadFromStorage() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY)
-    return data ? JSON.parse(data) : {}
-  } catch { return {} }
-}
-
-function saveToStorage(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-}
 
 export default function Dashboard() {
   const { showroom } = useAuth()
@@ -43,10 +32,6 @@ export default function Dashboard() {
   const setErr = (key, val) => setError(p => ({ ...p, [key]: val }))
 
   useEffect(() => {
-    const saved = loadFromStorage()
-    if (saved.orders) { setOrdersData(saved.orders); setLastUploaded(p => ({ ...p, orders: saved.ordersUploadTime })) }
-    if (saved.inventory) { setInventoryData(saved.inventory); setLastUploaded(p => ({ ...p, inventory: saved.inventoryUploadTime })) }
-    if (saved.returns) { setReturnsData(saved.returns); setLastUploaded(p => ({ ...p, returns: saved.returnsUploadTime })) }
     setInitLoading(false)
   }, [showroom?.id])
 
@@ -126,7 +111,6 @@ export default function Dashboard() {
       setOrdersData(result)
       const now = new Date().toISOString()
       setLastUploaded(p => ({ ...p, orders: now }))
-      saveToStorage({ ...loadFromStorage(), orders: result, ordersUploadTime: now })
     } catch (e) {
       setErr('orders', 'Failed to analyze orders - check CSV format')
     } finally {
@@ -144,7 +128,6 @@ export default function Dashboard() {
       setInventoryData(result)
       const now = new Date().toISOString()
       setLastUploaded(p => ({ ...p, inventory: now }))
-      saveToStorage({ ...loadFromStorage(), inventory: result, inventoryUploadTime: now })
     } catch (e) {
       setErr('inventory', 'Failed to analyze inventory - check CSV format')
     } finally {
@@ -179,12 +162,21 @@ export default function Dashboard() {
       setReturnsData(result)
       const now = new Date().toISOString()
       setLastUploaded(p => ({ ...p, returns: now }))
-      saveToStorage({ ...loadFromStorage(), returns: result, returnsUploadTime: now })
     } catch (e) {
       setErr('returns', 'Failed to analyze returns - check CSV format')
     } finally {
       setLoad('returns', false)
     }
+  }
+
+  const clearAllData = () => {
+    setOrdersData(null)
+    setInventoryData(null)
+    setReturnsData(null)
+    setOrdersFile(null)
+    setInventoryFile(null)
+    setReturnsFile(null)
+    setLastUploaded({})
   }
 
   const Spinner = () => (
@@ -218,17 +210,29 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold mb-2">
-          <ChevronRight size={12} />
-          <span>{showroom?.name?.toUpperCase() || 'WAREHOUSE INTELLIGENCE PLATFORM'}</span>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold mb-2">
+            <ChevronRight size={12} />
+            <span>{showroom?.name?.toUpperCase() || 'WAREHOUSE INTELLIGENCE PLATFORM'}</span>
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Operational Dashboard
+          </h1>
+          <p className="text-slate-400 mt-1 text-sm">
+            Upload CSV files to run analytics
+          </p>
         </div>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">
-          Operational Dashboard
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">
-          Upload CSV files to run analytics - your data is saved locally
-        </p>
+        
+        {(ordersData || inventoryData || returnsData) && (
+          <button
+            onClick={clearAllData}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/40 rounded-xl transition-all duration-300 text-sm font-semibold group w-fit"
+          >
+            <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
+            Clear Data
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -308,7 +312,7 @@ export default function Dashboard() {
           </div>
           <h2 className="text-slate-300 font-semibold text-lg">No data yet for {showroom?.name}</h2>
           <p className="text-slate-600 text-sm mt-2 max-w-xs">
-            Upload CSV files above - results are saved locally
+            Upload CSV files above
           </p>
         </div>
       )}
