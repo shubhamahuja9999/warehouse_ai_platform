@@ -1,36 +1,28 @@
 import { useState, useEffect } from 'react'
-import {
-  Package, TrendingUp, AlertTriangle, RefreshCw,
-  BarChart2, Loader2, ChevronRight, Boxes, Clock, Trash2
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Loader2, Clock } from 'lucide-react'
 
 import FileUploader from '../components/FileUploader'
 import KPICard from '../components/KPICard'
 import BarChartCard from '../components/BarChartCard'
 import DataTable from '../components/DataTable'
 import { useAuth } from '../context/AuthContext'
+import { useData } from '../context/DataContext'
 
 const STORAGE_KEY = 'warehouse_data'
 
 export default function Dashboard() {
   const { showroom } = useAuth()
+  const { 
+    ordersFile, inventoryFile, returnsFile,
+    ordersData, inventoryData, returnsData,
+    lastUploaded, loading: loadingStatus, error,
+    setOrdersData, setInventoryData, setReturnsData,
+    setOrdersFile, setInventoryFile, setReturnsFile,
+    setLoad, setErr, setLastUploaded, clearAllData
+  } = useData()
 
-  const [ordersFile, setOrdersFile] = useState(null)
-  const [inventoryFile, setInventoryFile] = useState(null)
-  const [returnsFile, setReturnsFile] = useState(null)
-
-  const [ordersData, setOrdersData] = useState(null)
-  const [inventoryData, setInventoryData] = useState(null)
-  const [returnsData, setReturnsData] = useState(null)
-
-  const [lastUploaded, setLastUploaded] = useState({})
-  const [loading, setLoading] = useState({})
-  const [error, setError] = useState({})
   const [initLoading, setInitLoading] = useState(true)
-
-  const setLoad = (key, val) => setLoading(p => ({ ...p, [key]: val }))
-  const setErr = (key, val) => setError(p => ({ ...p, [key]: val }))
 
   useEffect(() => {
     setInitLoading(false)
@@ -69,18 +61,15 @@ export default function Dashboard() {
       }
     })
     const skuFreq = Object.entries(skuCounts).map(([sku, orders]) => ({ sku, orders })).sort((a, b) => b.orders - a.orders)
-    const slow = skuFreq.slice(-20)
     const zoneActivity = {}
     Object.entries(skuZones).forEach(([sku, zone]) => {
       zoneActivity[zone] = (zoneActivity[zone] || 0) + (skuCounts[sku] || 0)
     })
-    const forecast = Math.round(skuFreq.reduce((sum, s) => sum + s.orders, 0) / data.length * 7)
     return {
       sku_frequency: skuFreq.slice(0, 20),
-      slow_skus: slow,
       slotting: skuFreq.slice(0, 20).map((s, i) => ({ sku: s.sku, picks: s.orders, recommended_zone: ['A', 'B', 'C', 'D'][i % 4] })),
-      forecast,
       total_orders: data.length,
+      total_picks: Object.values(skuCounts).reduce((a, b) => a + b, 0),
       unique_skus: Object.keys(skuCounts).length,
       zone_activity: Object.entries(zoneActivity).map(([zone, picks]) => ({ zone, picks }))
     }
@@ -92,6 +81,11 @@ export default function Dashboard() {
       return days > 90
     })
     return {
+      inventory: data.slice(0, 50).map(row => ({
+        sku: row.sku || row.SKU || row.product_id,
+        stock: parseInt(row.stock || row.Stock || row.quantity || 0),
+        zone: row.zone || row.Zone || 'A'
+      })),
       dead_stock: dead.slice(0, 50).map(row => ({
         sku: row.sku || row.SKU || row.product_id,
         stock: parseInt(row.stock || row.Stock || row.quantity || 0),
@@ -110,10 +104,9 @@ export default function Dashboard() {
       const data = await parseCSV(file)
       const result = await analyzeOrders(data)
       setOrdersData(result)
-      const now = new Date().toISOString()
-      setLastUploaded(p => ({ ...p, orders: now }))
+      setLastUploaded(p => ({ ...p, orders: new Date().toISOString() }))
     } catch (e) {
-      setErr('orders', 'Failed to analyze orders - check CSV format')
+      setErr('orders', 'Failed to analyze orders')
     } finally {
       setLoad('orders', false)
     }
@@ -127,10 +120,9 @@ export default function Dashboard() {
       const data = await parseCSV(file)
       const result = await analyzeInventory(data)
       setInventoryData(result)
-      const now = new Date().toISOString()
-      setLastUploaded(p => ({ ...p, inventory: now }))
+      setLastUploaded(p => ({ ...p, inventory: new Date().toISOString() }))
     } catch (e) {
-      setErr('inventory', 'Failed to analyze inventory - check CSV format')
+      setErr('inventory', 'Failed to analyze inventory')
     } finally {
       setLoad('inventory', false)
     }
@@ -138,52 +130,27 @@ export default function Dashboard() {
 
   const handleReturns = async (file) => {
     setReturnsFile(file)
-    if (!ordersFile && !ordersData) return
     setLoad('returns', true)
     setErr('returns', null)
     try {
-      const returnsDataArr = await parseCSV(file)
-      const returnRates = {}
-      returnsDataArr.forEach(row => {
-        const sku = row.sku || row.SKU || row.product_id
-        const ret = parseInt(row.returns || row.Returns || 1)
-        if (sku) returnRates[sku] = (returnRates[sku] || 0) + ret
-      })
-      const ordersSkus = {}
-      if (ordersData?.sku_frequency) {
-        ordersData.sku_frequency.forEach(s => ordersSkus[s.sku] = s.orders)
-      }
-      const risk = Object.entries(returnRates).map(([sku, returns]) => ({
-        sku,
-        orders: ordersSkus[sku] || 0,
-        returns,
-        return_rate: returns / ((ordersSkus[sku] || 1))
-      })).sort((a, b) => b.return_rate - a.return_rate)
-      const result = { return_risk: risk.slice(0, 20), avg_return_rate: risk.reduce((s, r) => s + r.return_rate, 0) / risk.length || 0 }
-      setReturnsData(result)
-      const now = new Date().toISOString()
-      setLastUploaded(p => ({ ...p, returns: now }))
+      const data = await parseCSV(file)
+      setReturnsData({ returns: data.slice(0, 20).map(row => ({
+        sku: row.sku || row.SKU,
+        reason: row.reason || 'Unknown Anomaly',
+        date: row.date || 'Today'
+      }))})
+      setLastUploaded(p => ({ ...p, returns: new Date().toISOString() }))
     } catch (e) {
-      setErr('returns', 'Failed to analyze returns - check CSV format')
+      setErr('returns', 'Failed to analyze returns')
     } finally {
       setLoad('returns', false)
     }
   }
 
-  const clearAllData = () => {
-    setOrdersData(null)
-    setInventoryData(null)
-    setReturnsData(null)
-    setOrdersFile(null)
-    setInventoryFile(null)
-    setReturnsFile(null)
-    setLastUploaded({})
-  }
-
   const Spinner = () => (
-    <div className="flex items-center gap-2 text-indigo-400 text-sm mt-2">
-      <Loader2 size={14} className="animate-spin" />
-      <span>Analyzing...</span>
+    <div className="flex items-center gap-2 text-electric-cyan text-[10px] font-bold uppercase tracking-widest mt-2">
+      <Loader2 size={12} className="animate-spin" />
+      <span>Calibrating...</span>
     </div>
   )
 
@@ -192,186 +159,168 @@ export default function Dashboard() {
   ) : null
 
   const UploadedAt = ({ ts }) => ts ? (
-    <div className="flex items-center gap-1.5 mt-2 text-emerald-400 text-xs">
+    <div className="flex items-center gap-1.5 mt-2 text-emerald-400 text-[10px] font-bold uppercase">
       <Clock size={11} />
-      <span>Last updated {new Date(ts).toLocaleString()}</span>
+      <span>Node Sync: {new Date(ts).toLocaleTimeString()}</span>
     </div>
   ) : null
 
-  if (initLoading) {
+  const isGlobalLoading = loadingStatus?.orders || loadingStatus?.inventory || loadingStatus?.returns
+
+  if (initLoading || isGlobalLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="text-indigo-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading your showroom data...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center p-20 glass-panel rounded-2xl border border-white/5 min-h-[400px]">
+        <Loader2 className="w-12 h-12 text-electric-cyan animate-spin mb-6 drop-shadow-[0_0_10px_#00f2ff]" />
+        <h2 className="text-xl font-black text-white uppercase tracking-widest italic neon-glow-cyan">Synchronizing Core...</h2>
+        <p className="text-slate-500 text-[10px] mt-3 font-mono">NODE_INDEX_SYNC & DATA_INTEGRITY_CHECK [ACTIVE]</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
-            {showroom?.name?.toUpperCase() || 'Overview'}
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Real-time monitoring and AI predictions.
-          </p>
+    <div className="space-y-6 pb-20">
+      {/* Hero */}
+      <section className="w-full">
+        <div className="relative overflow-hidden rounded-2xl border border-glass-border glass-panel group min-h-[250px] flex flex-col justify-end p-8">
+          <div className="absolute inset-0 z-0">
+            <img 
+              src="https://images.unsplash.com/photo-1573167243171-240024620021?auto=format&fit=crop&q=80&w=1600" 
+              alt="Logistic Command" 
+              className="w-full h-full object-cover grayscale opacity-30 group-hover:opacity-40 transition-all duration-1000"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/20 to-transparent"></div>
+            <div className="absolute inset-0 hologram-grid opacity-20"></div>
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="size-2.5 bg-electric-cyan rounded-full animate-pulse shadow-[0_0_10px_#00f2ff]"></span>
+              <span className="text-electric-cyan text-[10px] font-black uppercase tracking-[0.3em] neon-glow-cyan">Logistics Network Status: Active</span>
+            </div>
+            <h2 className="text-white text-4xl md:text-5xl font-black tracking-tighter uppercase italic drop-shadow-2xl">
+              Global Fleet Command
+            </h2>
+            <div className="mt-6 flex flex-wrap gap-6">
+              <div className="flex flex-col">
+                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">Asset Throughput</span>
+                <span className="text-white text-xl font-bold">{ordersData?.total_picks?.toLocaleString() || "---"}</span>
+              </div>
+              <div className="flex flex-col border-l border-white/10 pl-6">
+                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">Active Nodes</span>
+                <span className="text-white text-xl font-bold">{ordersData?.zone_activity?.length || "---"}</span>
+              </div>
+              <div className="flex flex-col border-l border-white/10 pl-6">
+                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.2em]">Operational Level</span>
+                <span className="text-emerald-400 text-xl font-bold uppercase tracking-widest italic">Stable</span>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="flex gap-4">
-          {(ordersData || inventoryData || returnsData) && (
-            <button
-              onClick={clearAllData}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-sm font-medium transition-colors border border-slate-200/20 dark:border-white/10 text-rose-500"
-            >
-              <span className="material-symbols-outlined text-lg">delete</span>
-              Clear Data
-            </button>
-          )}
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors shadow-[0_0_15px_rgba(124,43,238,0.4)]">
-            <span className="material-symbols-outlined text-lg">download</span>
-            Export
-          </button>
-        </div>
-      </div>
+      </section>
 
-      <motion.div 
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-          }
-        }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
-          <FileUploader label="Orders CSV" onFile={handleOrders} fileName={ordersFile?.name} />
-          {loading.orders && <Spinner />}
+      {/* CSV Uploader Row */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass-panel p-6 rounded-2xl border border-white/5 relative group hover:border-electric-cyan/30 transition">
+          <FileUploader label="Link Orders" onFile={handleOrders} fileName={ordersFile?.name} />
+          {loadingStatus.orders && <Spinner />}
           <ErrorBadge msg={error.orders} />
           <UploadedAt ts={lastUploaded.orders} />
-        </motion.div>
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
-          <FileUploader label="Inventory CSV" onFile={handleInventory} fileName={inventoryFile?.name} />
-          {loading.inventory && <Spinner />}
+        </div>
+        <div className="glass-panel p-6 rounded-2xl border border-white/5 relative group hover:border-electric-cyan/30 transition">
+          <FileUploader label="Sync Inventory" onFile={handleInventory} fileName={inventoryFile?.name} />
+          {loadingStatus.inventory && <Spinner />}
           <ErrorBadge msg={error.inventory} />
           <UploadedAt ts={lastUploaded.inventory} />
-        </motion.div>
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
-          <FileUploader label="Returns CSV" onFile={handleReturns} fileName={returnsFile?.name} />
-          {loading.returns && <Spinner />}
+        </div>
+        <div className="glass-panel p-6 rounded-2xl border border-white/5 relative group hover:border-electric-cyan/30 transition">
+          <FileUploader label="Feed Returns" onFile={handleReturns} fileName={returnsFile?.name} />
+          {loadingStatus.returns && <Spinner />}
           <ErrorBadge msg={error.returns} />
           <UploadedAt ts={lastUploaded.returns} />
-        </motion.div>
-      </motion.div>
+        </div>
+      </section>
 
-      {ordersData && (
-        <motion.div
-          initial="hidden" animate="show"
-          variants={{ show: { transition: { staggerChildren: 0.15 } } }}
-        >
-          <motion.section variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1, transition: { type: "spring" } } }}>
-            <SectionHeader icon={BarChart2} title="Orders Overview" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              <KPICard title="Total Orders" value={ordersData.total_orders?.toLocaleString()} icon={Package} color="indigo" />
-              <KPICard title="Unique SKUs" value={ordersData.unique_skus?.toLocaleString()} icon={Boxes} color="violet" />
-              <KPICard title="Forecast Next Week" value={ordersData.forecast} subtitle="Predicted orders" icon={TrendingUp} color="emerald" />
-              <KPICard title="Slow Moving SKUs" value={ordersData.slow_skus?.length} subtitle="Bottom 20" icon={AlertTriangle} color="amber" />
-            </div>
-          </motion.section>
-
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <BarChartCard title="Top 20 SKUs by Order Frequency" data={ordersData.sku_frequency} xKey="sku" yKey="orders" />
-            {ordersData.zone_activity && (
-              <BarChartCard title="Zone Activity (Picks)" data={ordersData.zone_activity} xKey="zone" yKey="picks" />
-            )}
-          </motion.div>
-
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="mt-6">
-            <DataTable title="Slotting Recommendations" data={ordersData.slotting} columns={[{ key: 'sku', label: 'SKU' }, { key: 'picks', label: 'Pick Count', format: v => v?.toLocaleString() }, { key: 'recommended_zone', label: 'Recommended Zone' }]} />
-          </motion.div>
-
-          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="mt-6">
-            <DataTable title="Slow Moving SKUs (Bottom 20)" data={ordersData.slow_skus} columns={[{ key: 'sku', label: 'SKU' }, { key: 'orders', label: 'Orders', format: v => v?.toLocaleString() }]} />
-          </motion.div>
-        </motion.div>
-      )}
-
-      {inventoryData && (
-        <motion.section
-          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", delay: 0.1 }}
-          className="mt-6"
-        >
-          <SectionHeader icon={AlertTriangle} title="Dead Stock Analysis" />
-          <div className="grid grid-cols-2 gap-4 mt-4 mb-6">
-            <KPICard title="Dead Stock SKUs" value={inventoryData.dead_stock_count} subtitle="No sale in 90+ days" icon={AlertTriangle} color="rose" />
-            <KPICard title="Total SKUs" value={inventoryData.total_skus} icon={Boxes} color="indigo" />
+      {/* Data Visuals Area */}
+      {(!ordersData && !inventoryData && !returnsData) ? (
+        <div className="glass-panel p-20 rounded-2xl flex flex-col items-center justify-center text-center border-dashed border-white/10 mt-6">
+          <div className="size-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-slate-500 text-4xl">cloud_off</span>
           </div>
-          <DataTable title="Dead Stock Items" data={inventoryData.dead_stock} columns={[{ key: 'sku', label: 'SKU' }, { key: 'stock', label: 'Stock Level', format: v => v?.toLocaleString() }, { key: 'days_since_sale', label: 'Days Since Last Sale', format: v => `${v} days` }]} />
-        </motion.section>
-      )}
-
-      {returnsData && (
-        <motion.section
-          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", delay: 0.2 }}
-          className="mt-6"
-        >
-          <SectionHeader icon={RefreshCw} title="Return Risk Analysis" />
-          <div className="mt-4 mb-6">
-            <KPICard title="Avg Return Rate" value={`${(returnsData.avg_return_rate * 100).toFixed(1)}%`} subtitle="Across all SKUs" icon={RefreshCw} color="rose" />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <BarChartCard title="Top 20 High-Risk Return SKUs" data={returnsData.return_risk?.map(r => ({ ...r, return_rate_pct: +(r.return_rate * 100).toFixed(1) }))} xKey="sku" yKey="return_rate_pct" />
-            <DataTable title="Return Risk Detail" data={returnsData.return_risk} columns={[{ key: 'sku', label: 'SKU' }, { key: 'orders', label: 'Orders' }, { key: 'returns', label: 'Returns' }, { key: 'return_rate', label: 'Return Rate', format: v => `${(v * 100).toFixed(1)}%` }]} />
-          </div>
-        </motion.section>
-      )}
-
-      {!ordersData && !inventoryData && !returnsData && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", duration: 1 }}
-          className="flex flex-col items-center justify-center py-24 text-center"
-        >
+          <h2 className="text-white font-black text-xl uppercase italic tracking-tighter">System Interface Offline</h2>
+          <p className="text-slate-500 text-xs mt-3 max-w-xs font-medium">Link operational telemetry to initialize the command center and calibrate the global grid.</p>
+        </div>
+      ) : (
+        <AnimatePresence>
           <motion.div 
-            animate={{ 
-              y: [0, -15, 0],
-              rotate: [0, 5, -5, 0],
-              boxShadow: ["0 0 15px rgba(124,43,238,0.3)", "0 0 35px rgba(124,43,238,0.6)", "0 0 15px rgba(124,43,238,0.3)"]
-            }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6"
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
           >
-            <span className="material-symbols-outlined text-primary text-4xl opacity-80">precision_manufacturing</span>
+            <div className="space-y-8">
+               <div className="flex items-center gap-3 px-2">
+                 <span className="material-symbols-outlined text-electric-cyan">terminal</span>
+                 <h3 className="text-white text-xs font-black uppercase tracking-[0.3em] italic">Telemetry Overview</h3>
+               </div>
+               
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 {ordersData?.zone_activity?.slice(0, 4).map((z, i) => (
+                   <KPICard 
+                     key={i}
+                     title={`Sector ${z.zone}`} 
+                     value={z.picks.toLocaleString()} 
+                     subtitle="Volume" 
+                     icon="hub" 
+                     color={i % 2 === 0 ? 'cyan' : 'violet'} 
+                   />
+                 ))}
+               </div>
+
+               <DataTable 
+                 title="Anomaly Log (Returns)" 
+                 data={returnsData?.returns || []} 
+                 columns={[
+                   { key: 'sku', label: 'SKU' }, 
+                   { key: 'reason', label: 'Anomaly' }, 
+                   { key: 'date', label: 'Timestamp' }
+                 ]} 
+               />
+            </div>
+
+            <div className="space-y-8">
+               <div className="flex items-center gap-3 px-2">
+                 <span className="material-symbols-outlined text-ultraviolet">dynamic_form</span>
+                 <h3 className="text-white text-xs font-black uppercase tracking-[0.3em] italic">Distribution Graph</h3>
+               </div>
+               
+               <BarChartCard 
+                 title="Sector Distribution" 
+                 data={ordersData?.zone_activity || []} 
+                 xKey="zone" 
+                 yKey="picks" 
+               />
+
+               <DataTable 
+                 title="Live Operational Ledger" 
+                 data={inventoryData?.inventory || []} 
+                 columns={[
+                   { key: 'sku', label: 'SKU' }, 
+                   { key: 'stock', label: 'Volume' }, 
+                   { key: 'zone', label: 'Sector' }
+                 ]} 
+               />
+               <button className="text-primary text-[10px] font-black hover:text-white transition uppercase tracking-[0.3em] w-full text-right" onClick={clearAllData}>
+                 Force Core Reset
+               </button>
+            </div>
           </motion.div>
-          <h2 className="text-slate-900 dark:text-white font-semibold text-lg">No data yet for {showroom?.name}</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 max-w-xs">
-            Upload CSV files above
-          </p>
-        </motion.div>
+        </AnimatePresence>
       )}
     </div>
   )
 }
 
-function SectionHeader({ icon: Icon, title }) {
-  // We're converting lucide icons to material symbols contextually where used
-  let materialIcon = 'analytics'
-  if (title.includes('Orders')) materialIcon = 'inventory_2'
-  if (title.includes('Dead Stock')) materialIcon = 'report'
-  if (title.includes('Return')) materialIcon = 'assignment_return'
-
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      <span className="material-symbols-outlined text-primary">{materialIcon}</span>
-      <h2 className="text-slate-900 dark:text-white text-lg font-semibold">{title}</h2>
-    </div>
-  )
-}
+const StatsMini = ({ label, value }) => (
+  <div className="flex flex-col">
+    <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">{label}</span>
+    <span className="text-white font-bold text-lg tracking-tight">{value}</span>
+  </div>
+)
