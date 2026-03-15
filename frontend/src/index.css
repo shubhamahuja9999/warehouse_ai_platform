@@ -1,13 +1,23 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@theme {
+  --color-primary: #7c2bee;
+  --color-background-light: #f7f6f8;
+  --color-background-dark: #181022;
+  --font-display: 'Inter', sans-serif;
+}
+
 * {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-display);
   box-sizing: border-box;
 }
 
 body {
-  background-color: #0a0f1e;
-  color: #e2e8f0;
+  background-color: var(--color-background-dark);
+  color: #f8fafc; /* Tailwind slate-50 */
   margin: 0;
 }
 
@@ -15,10 +25,10 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: rgba(255, 255, 255, 0.05); /* Tailwind white/5 */
 }
 ::-webkit-scrollbar-thumb {
-  background: #4f46e5;
+  background: var(--color-primary);
   border-radius: 3px;
 }
 

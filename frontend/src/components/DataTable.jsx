@@ -2,21 +2,22 @@ export default function DataTable({ title, data, columns, maxRows = 10 }) {
   const rows = data ? data.slice(0, maxRows) : []
 
   return (
-    <div className="glass-card border border-indigo-500/15 shadow-xl overflow-hidden">
+    <div className="flex flex-col gap-4 rounded-xl border border-slate-200/30 dark:border-white/10 bg-white/5 dark:bg-white/5 backdrop-blur-sm p-6 relative overflow-hidden">
       {title && (
-        <div className="px-6 py-4 border-b border-slate-700/50">
-          <h3 className="text-base font-semibold text-slate-200">{title}</h3>
+        <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-outlined text-primary text-sm">table_rows</span>
+            <h3 className="text-slate-900 dark:text-white text-lg font-semibold">{title}</h3>
         </div>
       )}
       {rows.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-800/50">
+              <tr className="border-b border-white/10">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className="px-5 py-3 text-left text-xs font-semibold text-indigo-300 uppercase tracking-wider"
+                    className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
                     {col.label}
                   </th>
@@ -27,11 +28,10 @@ export default function DataTable({ title, data, columns, maxRows = 10 }) {
               {rows.map((row, i) => (
                 <tr
                   key={i}
-                  className={`border-t border-slate-700/30 transition-colors duration-150 hover:bg-indigo-500/5
-                    ${i % 2 === 0 ? 'bg-slate-800/10' : 'bg-transparent'}`}
+                  className={`border-b border-white/5 transition-colors duration-150 hover:bg-white/5`}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="px-5 py-3 text-slate-300 font-medium">
+                    <td key={col.key} className="px-4 py-3 text-slate-900 dark:text-white font-medium">
                       {col.format ? col.format(row[col.key]) : row[col.key]}
                     </td>
                   ))}

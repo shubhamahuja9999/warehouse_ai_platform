@@ -210,29 +210,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      {/* Header */}
+      <div className="flex justify-between items-end">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold mb-2">
-            <ChevronRight size={12} />
-            <span>{showroom?.name?.toUpperCase() || 'WAREHOUSE INTELLIGENCE PLATFORM'}</span>
-          </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Operational Dashboard
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">
-            Upload CSV files to run analytics
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+            {showroom?.name?.toUpperCase() || 'Overview'}
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            Real-time monitoring and AI predictions.
           </p>
         </div>
         
-        {(ordersData || inventoryData || returnsData) && (
-          <button
-            onClick={clearAllData}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/40 rounded-xl transition-all duration-300 text-sm font-semibold group w-fit"
-          >
-            <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
-            Clear Data
+        <div className="flex gap-4">
+          {(ordersData || inventoryData || returnsData) && (
+            <button
+              onClick={clearAllData}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-sm font-medium transition-colors border border-slate-200/20 dark:border-white/10 text-rose-500"
+            >
+              <span className="material-symbols-outlined text-lg">delete</span>
+              Clear Data
+            </button>
+          )}
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary/90 rounded-lg text-sm font-medium transition-colors shadow-[0_0_15px_rgba(124,43,238,0.4)]">
+            <span className="material-symbols-outlined text-lg">download</span>
+            Export
           </button>
-        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -307,11 +310,11 @@ export default function Dashboard() {
 
       {!ordersData && !inventoryData && !returnsData && (
         <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 glow animate-pulse-slow">
-            <Package size={32} className="text-indigo-400 opacity-80" />
+          <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6 shadow-[0_0_15px_rgba(124,43,238,0.3)] animate-pulse-slow">
+            <span className="material-symbols-outlined text-primary text-4xl opacity-80">precision_manufacturing</span>
           </div>
-          <h2 className="text-slate-300 font-semibold text-lg">No data yet for {showroom?.name}</h2>
-          <p className="text-slate-600 text-sm mt-2 max-w-xs">
+          <h2 className="text-slate-900 dark:text-white font-semibold text-lg">No data yet for {showroom?.name}</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 max-w-xs">
             Upload CSV files above
           </p>
         </div>
@@ -321,13 +324,16 @@ export default function Dashboard() {
 }
 
 function SectionHeader({ icon: Icon, title }) {
+  // We're converting lucide icons to material symbols contextually where used
+  let materialIcon = 'analytics'
+  if (title.includes('Orders')) materialIcon = 'inventory_2'
+  if (title.includes('Dead Stock')) materialIcon = 'report'
+  if (title.includes('Return')) materialIcon = 'assignment_return'
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-        <Icon size={15} className="text-indigo-400" />
-      </div>
-      <h2 className="text-lg font-bold text-white">{title}</h2>
-      <div className="flex-1 h-px bg-gradient-to-r from-indigo-500/20 to-transparent" />
+    <div className="flex items-center gap-2 mb-4">
+      <span className="material-symbols-outlined text-primary">{materialIcon}</span>
+      <h2 className="text-slate-900 dark:text-white text-lg font-semibold">{title}</h2>
     </div>
   )
 }
