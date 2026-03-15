@@ -3,6 +3,7 @@ import {
   Package, TrendingUp, AlertTriangle, RefreshCw,
   BarChart2, Loader2, ChevronRight, Boxes, Clock, Trash2
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 import FileUploader from '../components/FileUploader'
 import KPICard from '../components/KPICard'
@@ -238,30 +239,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
+      <motion.div 
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+          }
+        }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
           <FileUploader label="Orders CSV" onFile={handleOrders} fileName={ordersFile?.name} />
           {loading.orders && <Spinner />}
           <ErrorBadge msg={error.orders} />
           <UploadedAt ts={lastUploaded.orders} />
-        </div>
-        <div>
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
           <FileUploader label="Inventory CSV" onFile={handleInventory} fileName={inventoryFile?.name} />
           {loading.inventory && <Spinner />}
           <ErrorBadge msg={error.inventory} />
           <UploadedAt ts={lastUploaded.inventory} />
-        </div>
-        <div>
+        </motion.div>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }}>
           <FileUploader label="Returns CSV" onFile={handleReturns} fileName={returnsFile?.name} />
           {loading.returns && <Spinner />}
           <ErrorBadge msg={error.returns} />
           <UploadedAt ts={lastUploaded.returns} />
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {ordersData && (
-        <>
-          <section>
+        <motion.div
+          initial="hidden" animate="show"
+          variants={{ show: { transition: { staggerChildren: 0.15 } } }}
+        >
+          <motion.section variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1, transition: { type: "spring" } } }}>
             <SectionHeader icon={BarChart2} title="Orders Overview" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
               <KPICard title="Total Orders" value={ordersData.total_orders?.toLocaleString()} icon={Package} color="indigo" />
@@ -269,34 +284,44 @@ export default function Dashboard() {
               <KPICard title="Forecast Next Week" value={ordersData.forecast} subtitle="Predicted orders" icon={TrendingUp} color="emerald" />
               <KPICard title="Slow Moving SKUs" value={ordersData.slow_skus?.length} subtitle="Bottom 20" icon={AlertTriangle} color="amber" />
             </div>
-          </section>
+          </motion.section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <BarChartCard title="Top 20 SKUs by Order Frequency" data={ordersData.sku_frequency} xKey="sku" yKey="orders" />
             {ordersData.zone_activity && (
               <BarChartCard title="Zone Activity (Picks)" data={ordersData.zone_activity} xKey="zone" yKey="picks" />
             )}
-          </div>
+          </motion.div>
 
-          <DataTable title="Slotting Recommendations" data={ordersData.slotting} columns={[{ key: 'sku', label: 'SKU' }, { key: 'picks', label: 'Pick Count', format: v => v?.toLocaleString() }, { key: 'recommended_zone', label: 'Recommended Zone' }]} />
+          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="mt-6">
+            <DataTable title="Slotting Recommendations" data={ordersData.slotting} columns={[{ key: 'sku', label: 'SKU' }, { key: 'picks', label: 'Pick Count', format: v => v?.toLocaleString() }, { key: 'recommended_zone', label: 'Recommended Zone' }]} />
+          </motion.div>
 
-          <DataTable title="Slow Moving SKUs (Bottom 20)" data={ordersData.slow_skus} columns={[{ key: 'sku', label: 'SKU' }, { key: 'orders', label: 'Orders', format: v => v?.toLocaleString() }]} />
-        </>
+          <motion.div variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { type: "spring" } } }} className="mt-6">
+            <DataTable title="Slow Moving SKUs (Bottom 20)" data={ordersData.slow_skus} columns={[{ key: 'sku', label: 'SKU' }, { key: 'orders', label: 'Orders', format: v => v?.toLocaleString() }]} />
+          </motion.div>
+        </motion.div>
       )}
 
       {inventoryData && (
-        <section>
+        <motion.section
+          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", delay: 0.1 }}
+          className="mt-6"
+        >
           <SectionHeader icon={AlertTriangle} title="Dead Stock Analysis" />
           <div className="grid grid-cols-2 gap-4 mt-4 mb-6">
             <KPICard title="Dead Stock SKUs" value={inventoryData.dead_stock_count} subtitle="No sale in 90+ days" icon={AlertTriangle} color="rose" />
             <KPICard title="Total SKUs" value={inventoryData.total_skus} icon={Boxes} color="indigo" />
           </div>
           <DataTable title="Dead Stock Items" data={inventoryData.dead_stock} columns={[{ key: 'sku', label: 'SKU' }, { key: 'stock', label: 'Stock Level', format: v => v?.toLocaleString() }, { key: 'days_since_sale', label: 'Days Since Last Sale', format: v => `${v} days` }]} />
-        </section>
+        </motion.section>
       )}
 
       {returnsData && (
-        <section>
+        <motion.section
+          initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", delay: 0.2 }}
+          className="mt-6"
+        >
           <SectionHeader icon={RefreshCw} title="Return Risk Analysis" />
           <div className="mt-4 mb-6">
             <KPICard title="Avg Return Rate" value={`${(returnsData.avg_return_rate * 100).toFixed(1)}%`} subtitle="Across all SKUs" icon={RefreshCw} color="rose" />
@@ -305,19 +330,32 @@ export default function Dashboard() {
             <BarChartCard title="Top 20 High-Risk Return SKUs" data={returnsData.return_risk?.map(r => ({ ...r, return_rate_pct: +(r.return_rate * 100).toFixed(1) }))} xKey="sku" yKey="return_rate_pct" />
             <DataTable title="Return Risk Detail" data={returnsData.return_risk} columns={[{ key: 'sku', label: 'SKU' }, { key: 'orders', label: 'Orders' }, { key: 'returns', label: 'Returns' }, { key: 'return_rate', label: 'Return Rate', format: v => `${(v * 100).toFixed(1)}%` }]} />
           </div>
-        </section>
+        </motion.section>
       )}
 
       {!ordersData && !inventoryData && !returnsData && (
-        <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6 shadow-[0_0_15px_rgba(124,43,238,0.3)] animate-pulse-slow">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", duration: 1 }}
+          className="flex flex-col items-center justify-center py-24 text-center"
+        >
+          <motion.div 
+            animate={{ 
+              y: [0, -15, 0],
+              rotate: [0, 5, -5, 0],
+              boxShadow: ["0 0 15px rgba(124,43,238,0.3)", "0 0 35px rgba(124,43,238,0.6)", "0 0 15px rgba(124,43,238,0.3)"]
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6"
+          >
             <span className="material-symbols-outlined text-primary text-4xl opacity-80">precision_manufacturing</span>
-          </div>
+          </motion.div>
           <h2 className="text-slate-900 dark:text-white font-semibold text-lg">No data yet for {showroom?.name}</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 max-w-xs">
             Upload CSV files above
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   )
